@@ -360,6 +360,7 @@ esac
 pane_id=$(resolve_target_pane "$agent")
 window_id=$(tmux display-message -p -t "$pane_id" '#{window_id}')
 active_window_id=$(tmux display-message -p '#{window_id}')
+active_pane_id=$(tmux display-message -p '#{pane_id}')
 
 background_enabled=$(tmux_get_option_or_default "@agent-indicator-background-enabled" "on")
 border_enabled=$(tmux_get_option_or_default "@agent-indicator-border-enabled" "on")
@@ -397,16 +398,18 @@ case "$state" in
         tmux_set_env "$agent_key" "$agent"
         tmux_set_env "TMUX_AGENT_ACTIVE_PANE_${agent}" "$pane_id"
 
-        if is_enabled "$background_enabled"; then
-            if [ -z "$state_bg" ]; then
-                :
-            elif [ "$state_bg" = "default" ]; then
-                reset_pane_style "$pane_id"
+        if [ "$pane_id" != "$active_pane_id" ]; then
+            if is_enabled "$background_enabled"; then
+                if [ -z "$state_bg" ]; then
+                    :
+                elif [ "$state_bg" = "default" ]; then
+                    reset_pane_style "$pane_id"
+                else
+                    apply_pane_style "$pane_id" "$state_bg"
+                fi
             else
-                apply_pane_style "$pane_id" "$state_bg"
+                reset_pane_style "$pane_id"
             fi
-        else
-            reset_pane_style "$pane_id"
         fi
 
         if is_enabled "$border_enabled"; then
@@ -437,16 +440,18 @@ case "$state" in
         tmux_set_env "$agent_key" "$agent"
         tmux_set_env "TMUX_AGENT_ACTIVE_PANE_${agent}" "$pane_id"
 
-        if is_enabled "$background_enabled"; then
-            if [ -z "$state_bg" ]; then
-                :
-            elif [ "$state_bg" = "default" ]; then
-                reset_pane_style "$pane_id"
+        if [ "$pane_id" != "$active_pane_id" ]; then
+            if is_enabled "$background_enabled"; then
+                if [ -z "$state_bg" ]; then
+                    :
+                elif [ "$state_bg" = "default" ]; then
+                    reset_pane_style "$pane_id"
+                else
+                    apply_pane_style "$pane_id" "$state_bg"
+                fi
             else
-                apply_pane_style "$pane_id" "$state_bg"
+                reset_pane_style "$pane_id"
             fi
-        else
-            reset_pane_style "$pane_id"
         fi
 
         if is_enabled "$border_enabled"; then
@@ -474,13 +479,15 @@ case "$state" in
         tmux_set_env "$done_window_key" "$window_id"
         tmux_set_env "TMUX_AGENT_ACTIVE_PANE_${agent}" "$pane_id"
 
-        if is_enabled "$background_enabled"; then
-            if [ -z "$state_bg" ]; then
-                :
-            elif [ "$state_bg" = "default" ]; then
-                reset_pane_style "$pane_id"
-            else
-                apply_pane_style "$pane_id" "$state_bg"
+        if [ "$pane_id" != "$active_pane_id" ]; then
+            if is_enabled "$background_enabled"; then
+                if [ -z "$state_bg" ]; then
+                    :
+                elif [ "$state_bg" = "default" ]; then
+                    reset_pane_style "$pane_id"
+                else
+                    apply_pane_style "$pane_id" "$state_bg"
+                fi
             fi
         fi
 
