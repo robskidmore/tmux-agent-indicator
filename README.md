@@ -204,6 +204,12 @@ set -g @agent-indicator-notification-format '[#{agent_name}] #{agent_state} (#{s
 set -g @agent-indicator-notification-duration '5000'
 set -g @agent-indicator-notification-command ''
 
+# macOS native OS notifications (independent of tmux notification settings)
+set -g @agent-indicator-os-notification-enabled 'off'
+set -g @agent-indicator-os-notification-states 'needs-input,done'
+set -g @agent-indicator-os-notification-title '[#{agent_name}] #{agent_state}'
+set -g @agent-indicator-os-notification-body '#{session_name}:#{window_name}'
+
 # Session dots (visual session indicator in status bar)
 set -g @agent-indicator-session-dots-active '●'
 set -g @agent-indicator-session-dots-inactive '○'
@@ -311,14 +317,28 @@ set -g @agent-indicator-notification-duration '3000'
 
 Available format placeholders: `#{agent_name}`, `#{agent_state}`, `#{session_name}`, `#{window_name}`, `#{window_index}`.
 
-You can also run an external command on each notification. The command receives environment variables `AGENT_NAME`, `AGENT_STATE`, `AGENT_SESSION`, and `AGENT_WINDOW`:
+### macOS native notifications
+
+Enable OS-level notifications with a single option:
+
+```tmux
+set -g @agent-indicator-os-notification-enabled 'on'
+```
+
+The title and body support the same placeholders as `@agent-indicator-notification-format`:
+
+```tmux
+set -g @agent-indicator-os-notification-title '[#{agent_name}] #{agent_state}'
+set -g @agent-indicator-os-notification-body '#{session_name}:#{window_name}'
+```
+
+### External command
+
+You can also run an arbitrary command on each notification. The command receives environment variables `AGENT_NAME`, `AGENT_STATE`, `AGENT_SESSION`, and `AGENT_WINDOW`:
 
 ```tmux
 # Log notifications to a file
 set -g @agent-indicator-notification-command 'echo "$AGENT_NAME $AGENT_STATE" >> /tmp/agent-notify.log'
-
-# macOS system notification
-set -g @agent-indicator-notification-command 'osascript -e "display notification \"$AGENT_NAME is $AGENT_STATE\" with title \"tmux agent\""'
 ```
 
 ## Custom Agent Integration

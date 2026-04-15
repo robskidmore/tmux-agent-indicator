@@ -290,46 +290,70 @@ resolve_target_pane() {
 notify_state_change() {
     local agent="$1" state="$2" pane_id="$3"
 
-    local notif_enabled
-    notif_enabled=$(tmux_get_option_or_default "@agent-indicator-notification-enabled" "on")
-    is_enabled "$notif_enabled" || return 0
-
-    local notif_states
-    notif_states=$(tmux_get_option_or_default "@agent-indicator-notification-states" "needs-input,done")
-    case ",$notif_states," in
-        *",${state},"*) ;;
-        *) return 0 ;;
-    esac
-
-    local fmt duration
-    fmt=$(tmux_get_option_or_default "@agent-indicator-notification-format" \
-        "[#{agent_name}] #{agent_state} (#{session_name}:#{window_name})")
-    duration=$(tmux_get_option_or_default "@agent-indicator-notification-duration" "5000")
-
     local session_name window_name window_index
     session_name=$(tmux display-message -p -t "$pane_id" '#S')
     window_name=$(tmux display-message -p -t "$pane_id" '#W')
     window_index=$(tmux display-message -p -t "$pane_id" '#I')
 
-    local message="$fmt"
-    message="${message//\#\{agent_name\}/$agent}"
-    message="${message//\#\{agent_state\}/$state}"
-    message="${message//\#\{session_name\}/$session_name}"
-    message="${message//\#\{window_name\}/$window_name}"
-    message="${message//\#\{window_index\}/$window_index}"
+    # tmux display-message notification
+    local notif_enabled
+    notif_enabled=$(tmux_get_option_or_default "@agent-indicator-notification-enabled" "on")
+    if is_enabled "$notif_enabled"; then
+        local notif_states
+        notif_states=$(tmux_get_option_or_default "@agent-indicator-notification-states" "needs-input,done")
+        case ",$notif_states," in
+            *",${state},"*)
+                local fmt duration
+                fmt=$(tmux_get_option_or_default "@agent-indicator-notification-format" \
+                    "[#{agent_name}] #{agent_state} (#{session_name}:#{window_name})")
+                duration=$(tmux_get_option_or_default "@agent-indicator-notification-duration" "5000")
 
-    if [ -n "$duration" ] && [ "$duration" != "0" ]; then
-        tmux display-message -d "$duration" "$message" || true
-    else
-        tmux display-message "$message" || true
+                local message="$fmt"
+                message="${message//\#\{agent_name\}/$agent}"
+                message="${message//\#\{agent_state\}/$state}"
+                message="${message//\#\{session_name\}/$session_name}"
+                message="${message//\#\{window_name\}/$window_name}"
+                message="${message//\#\{window_index\}/$window_index}"
+
+                if [ -n "$duration" ] && [ "$duration" != "0" ]; then
+                    tmux display-message -d "$duration" "$message" || true
+                else
+                    tmux display-message "$message" || true
+                fi
+
+                local ext_cmd
+                ext_cmd=$(tmux_get_option_or_default "@agent-indicator-notification-command" "")
+                if [ -n "$ext_cmd" ]; then
+                    AGENT_NAME="$agent" AGENT_STATE="$state" \
+                    AGENT_SESSION="$session_name" AGENT_WINDOW="$window_name" \
+                    bash -c "$ext_cmd" 2>/dev/null &
+                fi
+                ;;
+        esac
     fi
 
-    local ext_cmd
-    ext_cmd=$(tmux_get_option_or_default "@agent-indicator-notification-command" "")
-    if [ -n "$ext_cmd" ]; then
-        AGENT_NAME="$agent" AGENT_STATE="$state" \
-        AGENT_SESSION="$session_name" AGENT_WINDOW="$window_name" \
-        bash -c "$ext_cmd" 2>/dev/null &
+    # macOS native notification (independent of tmux notification settings)
+    local os_notif_enabled
+    os_notif_enabled=$(tmux_get_option_or_default "@agent-indicator-os-notification-enabled" "off")
+    if is_enabled "$os_notif_enabled" && command -v osascript >/dev/null 2>&1; then
+        local os_notif_states
+        os_notif_states=$(tmux_get_option_or_default "@agent-indicator-os-notification-states" "needs-input,done")
+        case ",$os_notif_states," in
+            *",${state},"*)
+                local os_title os_body
+                os_title=$(tmux_get_option_or_default "@agent-indicator-os-notification-title" "[#{agent_name}] #{agent_state}")
+                os_body=$(tmux_get_option_or_default "@agent-indicator-os-notification-body" "#{session_name}:#{window_name}")
+                os_title="${os_title//\#\{agent_name\}/$agent}"
+                os_title="${os_title//\#\{agent_state\}/$state}"
+                os_title="${os_title//\#\{session_name\}/$session_name}"
+                os_title="${os_title//\#\{window_name\}/$window_name}"
+                os_body="${os_body//\#\{agent_name\}/$agent}"
+                os_body="${os_body//\#\{agent_state\}/$state}"
+                os_body="${os_body//\#\{session_name\}/$session_name}"
+                os_body="${os_body//\#\{window_name\}/$window_name}"
+                osascript -e "display notification \"${os_body}\" with title \"${os_title}\"" 2>/dev/null &
+                ;;
+        esac
     fi
 }
 
